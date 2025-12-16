@@ -3,6 +3,9 @@ import { CheckCircle, Clock, AlertCircle, FileText, Phone, Mail, MessageSquare, 
 import api from '../api/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import PageTransition from '../components/PageTransition';
+import { motion } from 'framer-motion';
+import Tilt from 'react-parallax-tilt';
 
 const Inbox = () => {
   const [items, setItems] = useState([]);
@@ -80,163 +83,233 @@ const Inbox = () => {
     }
   };
 
-  return (
-    <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1>Inbox Unifiée</h1>
-          <p className="text-muted">Centralisation des flux entrants</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
-          <Plus size={18} style={{ marginRight: '0.5rem' }} />
-          Nouvelle Entrée
-        </button>
-      </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
 
-      {loading ? (
-        <p>Chargement...</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {items.map((item) => (
-            <div key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', animation: 'fadeIn 0.5s ease-out' }}>
-              <div style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.75rem', borderRadius: '50%' }}>
-                {getIcon(item.source)}
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
+  return (
+    <PageTransition>
+      <div className="container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+          <div>
+            <h1>Inbox Unifiée</h1>
+            <p className="text-muted">Centralisation des flux entrants</p>
+          </div>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn btn-primary" 
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            <Plus size={18} style={{ marginRight: '0.5rem' }} />
+            Nouvelle Entrée
+          </motion.button>
+        </div>
+
+        {loading ? (
+          <p>Chargement...</p>
+        ) : (
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          >
+
+
+            {items.map((item) => (
+              <Tilt 
+                key={item.id} 
+                tiltMaxAngleX={2} 
+                tiltMaxAngleY={2} 
+                perspective={1000} 
+                scale={1.02}
+                transitionSpeed={1500}
+                className="glass-panel"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                <motion.div 
+                  variants={itemVariants}
+                  style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1.5rem', height: '100%' }}
+                >
+                  <div style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.05)', transform: 'translateZ(20px)' }}>
+                    {getIcon(item.source)}
+                  </div>
+                  
+                  <div style={{ flex: 1, transform: 'translateZ(10px)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                      {getStatusBadge(item.type)}
+                      <span className="text-xs text-muted">
+                        {format(new Date(item.created_at), 'dd MMM HH:mm', { locale: fr })}
+                      </span>
+                      {/* Neural Insight Badge */}
+                      {['urgence', 'facturation'].includes(item.type) && (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(14, 165, 233, 0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(14, 165, 233, 0.2)' }}
+                        >
+                          <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 'bold' }}>CORTEX: {item.type === 'urgence' ? 'PRIORITÉ HAUTE' : 'ANALYSE FINANCIÈRE'}</span>
+                        </motion.div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 500, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>{item.content}</div>
+                  </div>
+
+                  <div style={{ transform: 'translateZ(20px)' }}>
+                    <motion.button 
+                      whileHover={{ scale: 1.1, color: 'var(--neon-green)' }}
+                      whileTap={{ scale: 0.9 }}
+                      className="btn" 
+                      onClick={(e) => { e.stopPropagation(); openProcessModal(item); }} 
+                      title="Traiter"
+                      style={{ padding: '0.75rem' }}
+                    >
+                      <CheckCircle size={20} />
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </Tilt>
+            ))}
+            
+            {items.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="text-muted" 
+                style={{ textAlign: 'center', padding: '6rem', background: 'rgba(255,255,255,0.01)', borderRadius: 'var(--radius-lg)', border: '1px dashed rgba(255,255,255,0.05)' }}
+              >
+                <CheckCircle size={48} style={{ marginBottom: '1rem', opacity: 0.2 }} />
+                <p>Aucune entrée en attente. Tout est calme.</p>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Add Item Modal */}
+        {isAddModalOpen && (
+          <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsAddModalOpen(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="modal-content"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                <h3>Nouvelle Entrée</h3>
+                <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+              <form onSubmit={handleAddItem}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Source</label>
+                  <select className="input" value={newItem.source} onChange={(e) => setNewItem({...newItem, source: e.target.value})}>
+                    <option value="note">Note Rapide</option>
+                    <option value="email">Email</option>
+                    <option value="call">Appel</option>
+                    <option value="internal">Interne</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Type</label>
+                  <select className="input" value={newItem.type} onChange={(e) => setNewItem({...newItem, type: e.target.value})}>
+                    <option value="info">Information</option>
+                    <option value="rh">Ressources Humaines</option>
+                    <option value="logement">Logement</option>
+                    <option value="facturation">Facturation</option>
+                    <option value="direction">Direction</option>
+                    <option value="urgence">URGENCE</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Contenu</label>
+                  <textarea 
+                    className="input" 
+                    rows="3" 
+                    value={newItem.content} 
+                    onChange={(e) => setNewItem({...newItem, content: e.target.value})}
+                    placeholder="Description de la demande..."
+                    required
+                  ></textarea>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button type="button" className="btn" onClick={() => setIsAddModalOpen(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-primary">Ajouter</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Process Modal */}
+        {isProcessModalOpen && selectedItem && (
+          <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsProcessModalOpen(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="modal-content"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                <h3>Traiter la demande</h3>
+                <button onClick={() => setIsProcessModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
               </div>
               
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                  {getStatusBadge(item.type)}
-                  <span className="text-xs text-muted">
-                    {format(new Date(item.created_at), 'dd MMM HH:mm', { locale: fr })}
-                  </span>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', fontSize: '1rem', borderLeft: '4px solid var(--neon-blue)' }}>
+                <p style={{ margin: 0, color: 'var(--text-primary)' }}>{selectedItem.content}</p>
+              </div>
+
+              <form onSubmit={handleProcessItem}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Décision / Action</label>
+                  <textarea 
+                    className="input" 
+                    rows="3" 
+                    value={processData.decision} 
+                    onChange={(e) => setProcessData({...processData, decision: e.target.value})}
+                    placeholder="Quelle action a été prise ?"
+                    required
+                  ></textarea>
                 </div>
-                <div style={{ fontWeight: 500, fontSize: '1.05rem' }}>{item.content}</div>
-              </div>
-
-              <div>
-                <button className="btn" onClick={() => openProcessModal(item)} title="Traiter">
-                  <CheckCircle size={18} style={{ color: 'var(--accent-success)' }} />
-                  <span style={{ marginLeft: '0.5rem' }}>Traiter</span>
-                </button>
-              </div>
-            </div>
-          ))}
-          
-          {items.length === 0 && (
-            <div className="text-muted" style={{ textAlign: 'center', padding: '4rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-lg)' }}>
-              <CheckCircle size={48} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-              <p>Aucune entrée en attente. Tout est calme.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Add Item Modal */}
-      {isAddModalOpen && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsAddModalOpen(false)}>
-          <div className="modal-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h3>Nouvelle Entrée</h3>
-              <button onClick={() => setIsAddModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleAddItem}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Source</label>
-                <select className="input" value={newItem.source} onChange={(e) => setNewItem({...newItem, source: e.target.value})}>
-                  <option value="note">Note Rapide</option>
-                  <option value="email">Email</option>
-                  <option value="call">Appel</option>
-                  <option value="internal">Interne</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Type</label>
-                <select className="input" value={newItem.type} onChange={(e) => setNewItem({...newItem, type: e.target.value})}>
-                  <option value="info">Information</option>
-                  <option value="rh">Ressources Humaines</option>
-                  <option value="logement">Logement</option>
-                  <option value="facturation">Facturation</option>
-                  <option value="direction">Direction</option>
-                  <option value="urgence">URGENCE</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Contenu</label>
-                <textarea 
-                  className="input" 
-                  rows="3" 
-                  value={newItem.content} 
-                  onChange={(e) => setNewItem({...newItem, content: e.target.value})}
-                  placeholder="Description de la demande..."
-                  required
-                ></textarea>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button type="button" className="btn" onClick={() => setIsAddModalOpen(false)}>Annuler</button>
-                <button type="submit" className="btn btn-primary">Ajouter</button>
-              </div>
-            </form>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Contexte supplémentaire (Optionnel)</label>
+                  <input 
+                    type="text" 
+                    className="input" 
+                    value={processData.context} 
+                    onChange={(e) => setProcessData({...processData, context: e.target.value})}
+                    placeholder="Détails utiles pour la mémoire..."
+                  />
+                </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Responsable (Optionnel)</label>
+                  <input 
+                    type="text" 
+                    className="input" 
+                    value={processData.responsible} 
+                    onChange={(e) => setProcessData({...processData, responsible: e.target.value})}
+                    placeholder="Qui gère ce dossier ?"
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button type="button" className="btn" onClick={() => setIsProcessModalOpen(false)}>Annuler</button>
+                  <button type="submit" className="btn btn-primary">
+                    <CheckCircle size={18} style={{ marginRight: '0.5rem' }} />
+                    Valider & Archiver
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
-
-      {/* Process Modal */}
-      {isProcessModalOpen && selectedItem && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsProcessModalOpen(false)}>
-          <div className="modal-content">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h3>Traiter la demande</h3>
-              <button onClick={() => setIsProcessModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-            
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{selectedItem.content}</p>
-            </div>
-
-            <form onSubmit={handleProcessItem}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Décision / Action</label>
-                <textarea 
-                  className="input" 
-                  rows="3" 
-                  value={processData.decision} 
-                  onChange={(e) => setProcessData({...processData, decision: e.target.value})}
-                  placeholder="Quelle action a été prise ?"
-                  required
-                ></textarea>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Contexte supplémentaire (Optionnel)</label>
-                <input 
-                  type="text" 
-                  className="input" 
-                  value={processData.context} 
-                  onChange={(e) => setProcessData({...processData, context: e.target.value})}
-                  placeholder="Détails utiles pour la mémoire..."
-                />
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Responsable (Optionnel)</label>
-                <input 
-                  type="text" 
-                  className="input" 
-                  value={processData.responsible} 
-                  onChange={(e) => setProcessData({...processData, responsible: e.target.value})}
-                  placeholder="Qui gère ce dossier ?"
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button type="button" className="btn" onClick={() => setIsProcessModalOpen(false)}>Annuler</button>
-                <button type="submit" className="btn btn-primary">
-                  <CheckCircle size={18} style={{ marginRight: '0.5rem' }} />
-                  Valider & Archiver
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </PageTransition>
   );
 };
 
