@@ -19,6 +19,7 @@ const Inbox = () => {
   // Forms State
   const [newItem, setNewItem] = useState({ source: 'note', type: 'info', content: '' });
   const [processData, setProcessData] = useState({ decision: '', context: '', responsible: '' });
+  const [generatedDoc, setGeneratedDoc] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -50,7 +51,18 @@ const Inbox = () => {
   const openProcessModal = (item) => {
     setSelectedItem(item);
     setProcessData({ decision: '', context: '', responsible: '' });
+    setGeneratedDoc(null);
     setIsProcessModalOpen(true);
+  };
+
+  const handleGenerate = async (templateType) => {
+    if (!selectedItem) return;
+    try {
+      const response = await api.post(`/inbox/${selectedItem.id}/generate`, { template_type: templateType });
+      setGeneratedDoc(response.data);
+    } catch (error) {
+      console.error('Error generating document:', error);
+    }
   };
 
   const handleProcessItem = async (e) => {
@@ -168,7 +180,7 @@ const Inbox = () => {
 
                   <div style={{ transform: 'translateZ(20px)' }}>
                     <motion.button 
-                      whileHover={{ scale: 1.1, color: 'var(--neon-green)' }}
+                      whileHover={{ scale: 1.1, color: '#22c55e' }}
                       whileTap={{ scale: 0.9 }}
                       className="btn" 
                       onClick={(e) => { e.stopPropagation(); openProcessModal(item); }} 
@@ -264,6 +276,99 @@ const Inbox = () => {
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', fontSize: '1rem', borderLeft: '4px solid var(--neon-blue)' }}>
                 <p style={{ margin: 0, color: 'var(--text-primary)' }}>{selectedItem.content}</p>
               </div>
+
+              {/* --- GENERATOR MODULE START --- */}
+              <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(14, 165, 233, 0.05)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(14, 165, 233, 0.2)' }}>
+                <h4 style={{ marginTop: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--neon-blue)' }}>
+                  <FileText size={16} /> Générateur de Documents
+                </h4>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  {/* DYNAMIC ACTIONS BASED ON TYPE */}
+                  {selectedItem.type === 'facturation' && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_paiement')} style={{ fontSize: '0.8rem' }}>Preuve Virement</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance')} style={{ fontSize: '0.8rem' }}>Relance Impayé</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_contestation')} style={{ fontSize: '0.8rem' }}>Contester</button>
+                    </>
+                  )}
+
+                  {selectedItem.type === 'rh' && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_convocation')} style={{ fontSize: '0.8rem' }}>Convocation</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_offre')} style={{ fontSize: '0.8rem' }}>Offre Emploi</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Service</button>
+                    </>
+                  )}
+
+                  {selectedItem.type === 'logement' && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('logement_preavis')} style={{ fontSize: '0.8rem' }}>Préavis Départ</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('logement_sinistre')} style={{ fontSize: '0.8rem' }}>Déclarer Sinistre</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>RDV État des lieux</button>
+                    </>
+                  )}
+
+                  {selectedItem.type === 'direction' && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Compte-Rendu</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Interne</button>
+                    </>
+                  )}
+
+                  {selectedItem.type === 'urgence' && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('urgence_signalement')} style={{ fontSize: '0.8rem', borderColor: 'var(--neon-red)', color: '#f87171' }}>SIGNALEMENT CRITIQUE</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Intervention Rapide</button>
+                    </>
+                  )}
+
+                  {['info', 'note'].includes(selectedItem.type) && (
+                    <>
+                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Confirmer RDV</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Synthèse</button>
+                    </>
+                  )}
+                </div>
+
+                {generatedDoc && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }} 
+                    animate={{ opacity: 1, height: 'auto' }}
+                    style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}
+                  >
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <span className="text-xs text-muted">OBJET:</span> <span style={{ fontWeight: 'bold' }}>{generatedDoc.subject}</span>
+                    </div>
+                    <textarea 
+                      className="input" 
+                      rows="6" 
+                      value={generatedDoc.body} 
+                      readOnly 
+                      style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginBottom: '1rem' }}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button type="button" className="btn" onClick={() => navigator.clipboard.writeText(`${generatedDoc.subject}\n\n${generatedDoc.body}`)} title="Copier">
+                        Copier
+                      </button>
+                      <button type="button" className="btn" onClick={() => {
+                        const element = document.createElement("a");
+                        const file = new Blob([`${generatedDoc.subject}\n\n${generatedDoc.body}`], {type: 'text/plain'});
+                        element.href = URL.createObjectURL(file);
+                        element.download = "document.txt";
+                        document.body.appendChild(element);
+                        element.click();
+                      }} title="Télécharger">
+                        Télécharger
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(generatedDoc.subject)}&body=${encodeURIComponent(generatedDoc.body)}`)} title="Envoyer par Email">
+                        <Mail size={16} style={{ marginRight: '0.5rem' }} /> Envoyer
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+              {/* --- GENERATOR MODULE END --- */}
 
               <form onSubmit={handleProcessItem}>
                 <div style={{ marginBottom: '1.5rem' }}>

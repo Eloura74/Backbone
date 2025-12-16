@@ -53,6 +53,26 @@ def update_inbox_item(item_id: int, item: InboxItemUpdate, db: Session = Depends
     db.commit()
     return {"ok": True}
 
+from app.services.generator import generate_document
+from pydantic import BaseModel
+
+class GenerateRequest(BaseModel):
+    template_type: str
+
+@router.post("/{item_id}/generate")
+def generate_inbox_document(
+    item_id: int, 
+    request: GenerateRequest, 
+    db: Session = Depends(get_db)
+):
+    item = db.query(InboxItem).filter(InboxItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    # Use item content as context
+    document = generate_document(request.template_type, item.content)
+    return document
+
 @router.post("/{item_id}/process")
 def process_inbox_item(
     item_id: int, 
