@@ -36,6 +36,45 @@ const Settings = () => {
           </div>
         </div>
 
+        {/* Section Email Integration */}
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+            Intégration Email (IMAP/SMTP)
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div>
+              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Serveur IMAP (ex: imap.gmail.com)</label>
+              <input type="text" className="input" placeholder="imap.gmail.com" id="email_host" />
+            </div>
+            <div>
+              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Utilisateur</label>
+              <input type="text" className="input" placeholder="votre@email.com" id="email_user" />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Mot de passe d'application</label>
+              <input type="password" className="input" placeholder="••••••••••••" id="email_password" />
+              <p className="text-xs text-muted" style={{ marginTop: '0.5rem' }}>
+                Pour Gmail : Utilisez un "Mot de passe d'application" (App Password) si la 2FA est activée.
+              </p>
+            </div>
+          </div>
+          <button 
+            className="btn btn-primary" 
+            style={{ width: '100%' }}
+            onClick={() => {
+              // Save to localStorage for demo purposes (In prod, use backend/secure storage)
+              localStorage.setItem('email_config', JSON.stringify({
+                host: document.getElementById('email_host').value,
+                user: document.getElementById('email_user').value,
+                password: document.getElementById('email_password').value
+              }));
+              alert('Configuration sauvegardée (Local)');
+            }}
+          >
+            <Save size={18} style={{ marginRight: '0.5rem' }} /> Sauvegarder la configuration
+          </button>
+        </div>
+
         {/* Section Données */}
         <div className="card" style={{ marginBottom: '2rem' }}>
           <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>

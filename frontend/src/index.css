@@ -281,8 +281,9 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000; /* Increased to be above everything */
   animation: fadeIn 0.3s ease;
+  overscroll-behavior: contain;
 }
 
 .modal-content {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Clock, AlertCircle, FileText, Phone, Mail, MessageSquare, Plus, X, ArrowRight, Trash2, Edit2, Maximize2, Minimize2 } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, FileText, Phone, Mail, MessageSquare, Plus, X, ArrowRight, Trash2, Edit2, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import api from '../api/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -80,6 +80,7 @@ const Inbox = () => {
 
 
   const openProcessModal = (item) => {
+    console.log("Opening modal for item:", item);
     setSelectedItem(item);
     setProcessData({ decision: '', context: '', responsible: '' });
     setGeneratedDoc(null);
@@ -178,14 +179,40 @@ const Inbox = () => {
   };
 
   return (
-    <PageTransition>
-      <div className="container">
+    <>
+      <PageTransition>
+        <div className="container">
         <div className="inbox-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
           <div>
             <h1>Inbox Unifiée</h1>
             <p className="text-muted">Centralisation des flux entrants</p>
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
+            <button 
+              className="btn" 
+              onClick={async () => {
+                const config = JSON.parse(localStorage.getItem('email_config'));
+                if (!config) {
+                  alert("Veuillez configurer l'email dans les paramètres d'abord.");
+                  return;
+                }
+                try {
+                  setLoading(true);
+                  const res = await api.post('/inbox/sync/email', config);
+                  alert(`${res.data.synced_count} emails synchronisés !`);
+                  fetchItems();
+                } catch (e) {
+                  console.error(e);
+                  alert("Erreur de synchronisation.");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              style={{ padding: '0.5rem', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--neon-blue)', border: '1px solid rgba(56, 189, 248, 0.3)' }}
+              title="Synchroniser Emails"
+            >
+              <RefreshCw size={20} />
+            </button>
            <button 
             className="btn" 
             onClick={() => setDenseMode(!denseMode)}
@@ -375,8 +402,11 @@ const Inbox = () => {
           </motion.div>
         )}
 
-        {/* Add Item Modal */}
-        {isAddModalOpen && (
+        </div>
+      </PageTransition>
+
+      {/* Add Item Modal */}
+      {isAddModalOpen && (
           <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsAddModalOpen(false)}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
@@ -443,7 +473,85 @@ const Inbox = () => {
               </div>
               
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', fontSize: '1rem', borderLeft: '4px solid var(--neon-blue)' }}>
-                <p style={{ margin: 0, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{selectedItem.content}</p>
+                {(() => {
+                  const content = selectedItem.content || "Contenu vide";
+                  const htmlMatch = content.match(/<HTML_CONTENT>([\s\S]*?)<\/HTML_CONTENT>/);
+                  const attachmentsMatch = content.match(/<ATTACHMENTS>([\s\S]*?)<\/ATTACHMENTS>/);
+                  
+                  // Split content to separate header/plain text from special blocks
+                  let plainText = content.split('<HTML_CONTENT>')[0].split('<ATTACHMENTS>')[0].trim();
+                  
+                  const htmlContent = htmlMatch ? htmlMatch[1] : null;
+                  const attachments = attachmentsMatch ? attachmentsMatch[1].split('\n').filter(Boolean).map(line => {
+                    const [filename, path] = line.split('|');
+                    return { filename, path };
+                  }) : [];
+
+                  // If HTML is present, we might want to hide the body part of plainText to avoid duplication.
+                  // But plainText includes the header "📧 Subject... De: ...".
+                  // We should try to keep the header and hide the rest if HTML exists.
+                  // The header usually ends with double newline.
+                  let header = plainText;
+                  let body = "";
+                  
+                  if (selectedItem.source === 'email' && plainText.includes('\n\n')) {
+                    const parts = plainText.split('\n\n');
+                    header = parts[0]; // "📧 Subject... De: ..."
+                    body = parts.slice(1).join('\n\n');
+                  }
+
+                  return (
+                    <>
+                      {/* Always show header/plain text context */}
+                      <p style={{ margin: 0, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', marginBottom: htmlContent ? '1rem' : 0, fontWeight: htmlContent ? 'bold' : 'normal', opacity: htmlContent ? 0.8 : 1 }}>
+                        {htmlContent ? header : plainText}
+                      </p>
+                      
+                      {htmlContent && (
+                        <div 
+                          style={{ 
+                            background: '#fff', 
+                            color: '#000', 
+                            padding: '1rem', 
+                            borderRadius: '4px', 
+                            overflow: 'auto', 
+                            maxHeight: '500px',
+                            marginTop: '1rem'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: htmlContent }} 
+                        />
+                      )}
+
+                      {attachments.length > 0 && (
+                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                          <h5 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Pièces Jointes</h5>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {attachments.map((att, idx) => (
+                              <a 
+                                key={idx} 
+                                href="#" // In a real app, this would be a download link to the backend
+                                onClick={(e) => { e.preventDefault(); alert(`Téléchargement de ${att.filename} (Simulation)`); }}
+                                className="badge" 
+                                style={{ 
+                                  background: 'rgba(255,255,255,0.1)', 
+                                  color: 'var(--text-primary)', 
+                                  textDecoration: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem 1rem'
+                                }}
+                              >
+                                <FileText size={14} />
+                                {att.filename}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <button 
@@ -478,6 +586,39 @@ const Inbox = () => {
                     </button>
                   </div>
                 </motion.div>
+              )}
+
+              {/* REPLY MODULE */}
+              {selectedItem.source === 'email' && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => {
+                      const subject = selectedItem.content.split('\n')[0].replace('📧 ', '');
+                      const senderMatch = selectedItem.content.match(/De: (.*)/);
+                      const sender = senderMatch ? senderMatch[1] : '';
+                      
+                      // Pre-fill reply modal or just use a prompt for now
+                      const replyBody = prompt(`Répondre à ${sender}\n\nSaisissez votre réponse :`);
+                      if (replyBody) {
+                        // Send email via API
+                        api.post('/inbox/send/email', {
+                          to: sender, // We need to extract the email address properly
+                          subject: `Re: ${subject}`,
+                          body: replyBody,
+                          // We need config here, but for now let's assume backend handles it or we pass it
+                          // Actually the backend endpoint expects host/user/pass in body or env.
+                          // Let's get it from localStorage
+                          ...JSON.parse(localStorage.getItem('email_config'))
+                        }).then(() => alert('Réponse envoyée !')).catch(e => alert('Erreur envoi: ' + e));
+                      }
+                    }}
+                    style={{ width: '100%', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}
+                  >
+                    <Mail size={16} style={{ marginRight: '0.5rem' }} />
+                    Répondre à l'email
+                  </button>
+                </div>
               )}
 
               {/* --- GENERATOR MODULE START --- */}
@@ -574,6 +715,16 @@ const Inbox = () => {
                       <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>📅 Confirmer RDV</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>📝 Synthèse Rapide</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('admin_resiliation')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>❌ Résiliation</button>
+                      <button 
+                        type="button" 
+                        className="btn" 
+                        onClick={() => {
+                          window.open(`${api.defaults.baseURL}/inbox/${selectedItem.id}/calendar`, '_blank');
+                        }} 
+                        style={{ fontSize: '0.8rem', opacity: 0.8, background: 'rgba(255,255,255,0.1)' }}
+                      >
+                        🗓️ Ajouter au Calendrier
+                      </button>
                     </div>
                   </div>
 
@@ -713,8 +864,7 @@ const Inbox = () => {
             </motion.div>
           </div>
         )}
-      </div>
-    </PageTransition>
+    </>
   );
 };
 
