@@ -51,10 +51,39 @@ const Inbox = () => {
     }
   };
 
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleAnalyze = async () => {
+    if (!selectedItem) return;
+    setIsAnalyzing(true);
+    try {
+      const summaryRes = await api.post('/cortex/summarize', { text: selectedItem.content });
+      const suggestRes = await api.post('/cortex/suggest', { context: selectedItem.content });
+      
+      setAiAnalysis({
+        summary: summaryRes.data.summary,
+        suggestion: suggestRes.data.suggestion
+      });
+      
+      // Pre-fill context with summary if empty
+      if (!processData.context) {
+        setProcessData(prev => ({ ...prev, context: summaryRes.data.summary }));
+      }
+    } catch (error) {
+      console.error("AI Analysis failed:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+
+
   const openProcessModal = (item) => {
     setSelectedItem(item);
     setProcessData({ decision: '', context: '', responsible: '' });
     setGeneratedDoc(null);
+    setAiAnalysis(null); // Reset AI data
     setIsProcessModalOpen(true);
   };
 
@@ -216,9 +245,30 @@ const Inbox = () => {
                   }
                 }
               }}
+              onClick={() => document.getElementById('file-upload').click()}
             >
+              <input 
+                type="file" 
+                id="file-upload" 
+                style={{ display: 'none' }} 
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (files.length > 0) {
+                    const formData = new FormData();
+                    formData.append('file', files[0]);
+                    try {
+                      await api.post('/inbox/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                      });
+                      fetchItems();
+                    } catch (error) {
+                      console.error('Upload failed:', error);
+                    }
+                  }
+                }}
+              />
               <FileText size={32} style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Glissez vos documents ici (PDF, Excel, Word)</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Glissez vos documents ici ou cliquez pour parcourir (PDF, Excel, Word)</p>
             </div>
 
 
@@ -385,6 +435,7 @@ const Inbox = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="modal-content"
+              style={{ maxWidth: '1000px', width: '90%' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                 <h3>Traiter la demande</h3>
@@ -392,8 +443,42 @@ const Inbox = () => {
               </div>
               
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '2rem', fontSize: '1rem', borderLeft: '4px solid var(--neon-blue)' }}>
-                <p style={{ margin: 0, color: 'var(--text-primary)' }}>{selectedItem.content}</p>
+                <p style={{ margin: 0, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{selectedItem.content}</p>
               </div>
+
+              <button 
+                type="button" 
+                className="btn" 
+                onClick={handleAnalyze} 
+                disabled={isAnalyzing}
+                style={{ width: '100%', marginBottom: '1rem', background: 'linear-gradient(45deg, #6366f1, #8b5cf6)', border: 'none', color: 'white' }}
+              >
+                {isAnalyzing ? 'Analyse en cours...' : '✨ Analyse IA (Cortex)'}
+              </button>
+
+              {aiAnalysis && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card" 
+                  style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', marginBottom: '1rem' }}
+                >
+                  <h4 style={{ color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>🧠 Analyse du Cortex</h4>
+                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem', marginBottom: '1rem' }}>{aiAnalysis.summary}</div>
+                  
+                  <h4 style={{ color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>💡 Suggestion de réponse</h4>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '4px', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                    {aiAnalysis.suggestion}
+                    <button 
+                      className="text-xs" 
+                      style={{ display: 'block', marginTop: '0.5rem', color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      onClick={() => navigator.clipboard.writeText(aiAnalysis.suggestion)}
+                    >
+                      Copier la suggestion
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
               {/* --- GENERATOR MODULE START --- */}
               <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(14, 165, 233, 0.05)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(14, 165, 233, 0.2)' }}>

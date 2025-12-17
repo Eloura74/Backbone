@@ -30,8 +30,9 @@ app.add_middleware(
 app.include_router(inbox.router, prefix="/inbox", tags=["inbox"])
 app.include_router(memory.router, prefix="/memory", tags=["memory"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
-from app.api import settings
+from app.api import settings, cortex
 app.include_router(settings.router, prefix="/settings", tags=["settings"])
+app.include_router(cortex.router, prefix="/cortex", tags=["cortex"])
 
 @app.get("/")
 def read_root():
