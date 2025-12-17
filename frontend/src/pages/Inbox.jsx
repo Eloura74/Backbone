@@ -180,7 +180,7 @@ const Inbox = () => {
   return (
     <PageTransition>
       <div className="container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+        <div className="inbox-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
           <div>
             <h1>Inbox Unifiée</h1>
             <p className="text-muted">Centralisation des flux entrants</p>
@@ -275,7 +275,7 @@ const Inbox = () => {
             {items.map((item) => (
               <motion.div key={item.id} variants={itemVariants}>
                   <div 
-                    className="card" 
+                    className={`card inbox-item ${denseMode ? 'dense' : ''}`}
                     style={{ 
                       cursor: 'pointer',
                       borderLeft: `4px solid var(--neon-${['urgence', 'facturation'].includes(item.type) ? 'red' : 'blue'})`,
@@ -332,7 +332,7 @@ const Inbox = () => {
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: denseMode ? 'row' : 'column', gap: '0.5rem' }}>
+                    <div className="inbox-item-actions" style={{ display: 'flex', flexDirection: denseMode ? 'row' : 'column', gap: '0.5rem' }}>
                        <button 
                         className="btn" 
                         style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)' }}
@@ -496,64 +496,87 @@ const Inbox = () => {
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  {/* DYNAMIC ACTIONS BASED ON TYPE */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                  
+                  {/* CATEGORY: FINANCE */}
                   {selectedItem.type === 'facturation' && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_paiement')} style={{ fontSize: '0.8rem' }}>Preuve Virement</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_1')} style={{ fontSize: '0.8rem' }}>Relance (Douce)</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_2')} style={{ fontSize: '0.8rem' }}>Relance (Ferme)</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_mise_demeure')} style={{ fontSize: '0.8rem', color: '#f87171', borderColor: '#f87171' }}>Mise en Demeure</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_contestation')} style={{ fontSize: '0.8rem' }}>Contester</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_devis')} style={{ fontSize: '0.8rem' }}>Devis</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('finance_rib')} style={{ fontSize: '0.8rem' }}>Envoyer RIB</button>
-                    </>
+                    <div className="action-group">
+                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Finance & Facturation</h5>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_paiement')} style={{ fontSize: '0.8rem' }}>Preuve Virement</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_1')} style={{ fontSize: '0.8rem' }}>Relance (Douce)</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_2')} style={{ fontSize: '0.8rem' }}>Relance (Ferme)</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_mise_demeure')} style={{ fontSize: '0.8rem', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.3)' }}>Mise en Demeure</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_contestation')} style={{ fontSize: '0.8rem' }}>Contester</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('facture_devis')} style={{ fontSize: '0.8rem' }}>Devis</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('finance_rib')} style={{ fontSize: '0.8rem' }}>Envoyer RIB</button>
+                      </div>
+                    </div>
                   )}
 
+                  {/* CATEGORY: RH */}
                   {selectedItem.type === 'rh' && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_convocation')} style={{ fontSize: '0.8rem' }}>Convocation</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_offre')} style={{ fontSize: '0.8rem' }}>Offre Emploi</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_promesse')} style={{ fontSize: '0.8rem' }}>Promesse Embauche</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_conges_validation')} style={{ fontSize: '0.8rem' }}>Valider Congés</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_avertissement')} style={{ fontSize: '0.8rem', color: '#fbbf24', borderColor: '#fbbf24' }}>Avertissement</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('rh_certificat')} style={{ fontSize: '0.8rem' }}>Certificat Travail</button>
-                    </>
+                    <div className="action-group">
+                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ressources Humaines</h5>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_convocation')} style={{ fontSize: '0.8rem' }}>Convocation</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_offre')} style={{ fontSize: '0.8rem' }}>Offre Emploi</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_promesse')} style={{ fontSize: '0.8rem' }}>Promesse Embauche</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_conges_validation')} style={{ fontSize: '0.8rem' }}>Valider Congés</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_avertissement')} style={{ fontSize: '0.8rem', color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.3)' }}>Avertissement</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('rh_certificat')} style={{ fontSize: '0.8rem' }}>Certificat Travail</button>
+                      </div>
+                    </div>
                   )}
 
+                  {/* CATEGORY: LOGEMENT */}
                   {selectedItem.type === 'logement' && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('logement_preavis')} style={{ fontSize: '0.8rem' }}>Préavis Départ</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('logement_sinistre')} style={{ fontSize: '0.8rem' }}>Déclarer Sinistre</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('logement_quittance')} style={{ fontSize: '0.8rem' }}>Quittance Loyer</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('logement_travaux')} style={{ fontSize: '0.8rem' }}>Demande Travaux</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>RDV État des lieux</button>
-                    </>
+                    <div className="action-group">
+                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Immobilier & Logement</h5>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn" onClick={() => handleGenerate('logement_preavis')} style={{ fontSize: '0.8rem' }}>Préavis Départ</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('logement_sinistre')} style={{ fontSize: '0.8rem' }}>Déclarer Sinistre</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('logement_quittance')} style={{ fontSize: '0.8rem' }}>Quittance Loyer</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('logement_travaux')} style={{ fontSize: '0.8rem' }}>Demande Travaux</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>RDV État des lieux</button>
+                      </div>
+                    </div>
                   )}
 
+                  {/* CATEGORY: DIRECTION */}
                   {selectedItem.type === 'direction' && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Compte-Rendu</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Interne</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('direction_odj')} style={{ fontSize: '0.8rem' }}>Ordre du Jour</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('admin_procuration')} style={{ fontSize: '0.8rem' }}>Procuration</button>
-                    </>
+                    <div className="action-group">
+                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Direction & Admin</h5>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Compte-Rendu</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Interne</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('direction_odj')} style={{ fontSize: '0.8rem' }}>Ordre du Jour</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('admin_procuration')} style={{ fontSize: '0.8rem' }}>Procuration</button>
+                      </div>
+                    </div>
                   )}
 
+                  {/* CATEGORY: URGENCE */}
                   {selectedItem.type === 'urgence' && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('urgence_signalement')} style={{ fontSize: '0.8rem', borderColor: 'var(--neon-red)', color: '#f87171' }}>SIGNALEMENT CRITIQUE</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Intervention Rapide</button>
-                    </>
+                    <div className="action-group">
+                      <h5 style={{ margin: '0 0 0.5rem 0', color: '#f87171', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🚨 GESTION DE CRISE</h5>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="btn" onClick={() => handleGenerate('urgence_signalement')} style={{ fontSize: '0.8rem', borderColor: 'var(--neon-red)', color: '#f87171', background: 'rgba(248, 113, 113, 0.1)' }}>SIGNALEMENT CRITIQUE</button>
+                        <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Intervention Rapide</button>
+                      </div>
+                    </div>
                   )}
 
-                  {['info', 'note'].includes(selectedItem.type) && (
-                    <>
-                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Confirmer RDV</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Synthèse</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('admin_resiliation')} style={{ fontSize: '0.8rem' }}>Résiliation Contrat</button>
-                    </>
-                  )}
+                  {/* UNIVERSAL ACTIONS (ALWAYS VISIBLE) */}
+                  <div className="action-group" style={{ marginTop: '0.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <h5 style={{ margin: '0 0 0.5rem 0', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions Universelles</h5>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>📅 Confirmer RDV</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>📝 Synthèse Rapide</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('admin_resiliation')} style={{ fontSize: '0.8rem', opacity: 0.8 }}>❌ Résiliation</button>
+                    </div>
+                  </div>
+
                 </div>
 
                 {generatedDoc && (

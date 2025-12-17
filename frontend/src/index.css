@@ -305,3 +305,140 @@ h1 {
   top: 0; left: 0; right: 0; height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
 }
+
+/* --- GLOBAL RESET --- */
+* {
+  box-sizing: border-box;
+}
+
+/* --- RESPONSIVE DESIGN --- */
+
+/* Mobile Toggle Button (Hidden by default on Desktop) */
+.mobile-toggle {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Layout */
+  .layout {
+    flex-direction: column;
+  }
+
+  /* Sidebar Mobile */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%; /* Fully hide regardless of width */
+    height: 100vh;
+    width: 80%; /* Max width for mobile sidebar */
+    max-width: 300px;
+    background: #020617;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    z-index: 150;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+    padding: 2rem 1.5rem; /* Slightly reduced padding */
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  /* Main Content Mobile */
+  .main-content {
+    padding: 1rem;
+    padding-top: 5rem; /* More space for toggle button */
+    width: 100%;
+  }
+
+  /* Toggle Button Visible */
+  .mobile-toggle {
+    display: flex;
+    top: 1.5rem;
+    right: 1.5rem;
+  }
+
+  /* Typography Adjustments */
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  /* Modal Adjustments */
+  .modal-content {
+    padding: 1.5rem;
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  /* Inbox Specific Mobile Tweaks */
+  .inbox-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .inbox-header button {
+    width: 100%;
+  }
+
+  .inbox-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .inbox-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  /* Memory Mobile */
+  .memory-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+  
+  .memory-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 1rem;
+  }
+
+  .memory-search {
+    width: 100%;
+  }
+  
+  .memory-search input {
+    width: 100% !important;
+  }
+
+  .memory-item > div {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .memory-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  /* Dashboard Mobile */
+  .dashboard-charts {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Settings Mobile */
+  .settings-actions {
+    flex-direction: column;
+  }
+}

@@ -1,19 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Inbox, BrainCircuit, Settings, Command as CommandIcon } from 'lucide-react';
+import { LayoutDashboard, Inbox, BrainCircuit, Settings, Command as CommandIcon, Menu, X } from 'lucide-react';
 import CommandPalette from './CommandPalette';
 import ParticlesBackground from './ParticlesBackground';
 import { AnimatePresence } from 'framer-motion';
 
 const Layout = () => {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="layout">
       <ParticlesBackground />
       <CommandPalette />
       
-      <aside className="sidebar">
+      {/* Mobile Toggle Button */}
+      <button 
+        className="mobile-toggle btn" 
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        style={{ 
+          position: 'fixed', 
+          top: '1rem', 
+          right: '1rem', 
+          zIndex: 200, 
+          padding: '0.5rem',
+          background: 'rgba(15, 23, 42, 0.8)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }}
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setIsMobileMenuOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 140
+          }}
+        />
+      )}
+      
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div style={{ marginBottom: '2rem', paddingLeft: '1rem' }}>
           <h1 style={{ fontSize: '2rem', letterSpacing: '-0.05em' }}>BACKBONE</h1>
           <p className="text-xs text-muted" style={{ marginTop: '0.5rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Neural Interface v2.0</p>
@@ -32,19 +66,31 @@ const Layout = () => {
         </div>
         
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
             <Inbox size={20} />
             <span>Inbox Unifiée</span>
           </NavLink>
           
-          <NavLink to="/memory" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink 
+            to="/memory" 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
             <BrainCircuit size={20} />
             <span>Mémoire Active</span>
           </NavLink>
 
           <div style={{ margin: '2rem 1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}></div>
 
-          <NavLink to="/dashboard" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink 
+            to="/dashboard" 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
             <LayoutDashboard size={20} />
             <span>Tableau de Bord</span>
           </NavLink>
@@ -56,7 +102,11 @@ const Layout = () => {
             <span className="text-xs text-muted">Commandes</span>
           </div>
 
-          <NavLink to="/settings" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink 
+            to="/settings" 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
             <Settings size={20} />
             <span>Configuration</span>
           </NavLink>

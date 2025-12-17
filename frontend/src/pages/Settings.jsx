@@ -42,7 +42,7 @@ const Settings = () => {
             Gestion des Données
           </h3>
           
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="settings-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button className="btn" style={{ flex: 1 }}>
               <Download size={18} style={{ marginRight: '0.5rem' }} />
               Exporter la Mémoire (CSV)

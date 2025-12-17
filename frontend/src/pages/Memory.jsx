@@ -73,14 +73,14 @@ const Memory = () => {
   return (
     <PageTransition>
       <div className="container" style={{ height: 'calc(100vh - 4rem)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div className="memory-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div>
             <h1>Mémoire Active</h1>
             <p className="text-muted">Historique des décisions et actions</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
+          <div className="memory-controls" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div className="memory-search" style={{ position: 'relative' }}>
               <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
@@ -92,7 +92,7 @@ const Memory = () => {
               />
             </div>
             
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: 'var(--radius-md)', display: 'flex' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.25rem', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'center' }}>
               <button 
                 onClick={() => setViewMode('list')}
                 className={`btn ${viewMode === 'list' ? 'btn-primary' : ''}`}
@@ -131,7 +131,7 @@ const Memory = () => {
                       key={item.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="glass-panel"
+                      className="glass-panel memory-item"
                       style={{ padding: '1.5rem', cursor: 'pointer', transition: 'all 0.2s' }}
                       onClick={() => openEditModal(item)}
                       whileHover={{ scale: 1.01, borderColor: 'var(--neon-blue)' }}
@@ -148,7 +148,7 @@ const Memory = () => {
                             {item.context}
                           </p>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div className="memory-item-actions" style={{ display: 'flex', gap: '0.5rem' }}>
                           <button 
                             className="btn" 
                             style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'transparent' }}

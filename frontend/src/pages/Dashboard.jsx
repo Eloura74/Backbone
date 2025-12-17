@@ -95,7 +95,7 @@ const Dashboard = () => {
       </div>
 
       {/* CHARTS ROW 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+      <div className="dashboard-charts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
         
         {/* ACTIVITY CHART */}
         <div className="card" style={{ minHeight: '300px' }}>
