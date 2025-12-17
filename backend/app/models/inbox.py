@@ -8,6 +8,7 @@ class InboxSource(str, enum.Enum):
     CALL = "call"
     INTERNAL = "internal"
     NOTE = "note"
+    DOCUMENT = "document"
 
 class InboxType(str, enum.Enum):
     RH = "rh"

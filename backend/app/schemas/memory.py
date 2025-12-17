@@ -7,6 +7,7 @@ class MemoryTraceBase(BaseModel):
     decision: str
     state: Optional[str] = None
     responsible: Optional[str] = None
+    document_content: Optional[str] = None
 
 class MemoryTraceCreate(MemoryTraceBase):
     pass

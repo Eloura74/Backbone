@@ -1,4 +1,5 @@
 import React from 'react';
+import api from '../api/client';
 import { Save, Trash2, Download, User, Bell, Shield } from 'lucide-react';
 
 const Settings = () => {
@@ -46,7 +47,22 @@ const Settings = () => {
               <Download size={18} style={{ marginRight: '0.5rem' }} />
               Exporter la Mémoire (CSV)
             </button>
-            <button className="btn" style={{ flex: 1, borderColor: 'var(--accent-danger)', color: 'var(--accent-danger)', background: 'rgba(239, 68, 68, 0.05)' }}>
+            <button 
+              className="btn" 
+              style={{ flex: 1, borderColor: 'var(--accent-danger)', color: 'var(--accent-danger)', background: 'rgba(239, 68, 68, 0.05)' }}
+              onClick={async () => {
+                if (confirm("ATTENTION : Cette action va effacer TOUTES les données (Inbox et Mémoire). Êtes-vous sûr ?")) {
+                  try {
+                    await api.delete('/settings/reset');
+                    alert("Système réinitialisé avec succès.");
+                    window.location.reload();
+                  } catch (error) {
+                    console.error("Erreur lors de la réinitialisation:", error);
+                    alert("Erreur lors de la réinitialisation.");
+                  }
+                }
+              }}
+            >
               <Trash2 size={18} style={{ marginRight: '0.5rem' }} />
               Réinitialiser tout
             </button>

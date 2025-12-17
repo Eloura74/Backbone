@@ -30,3 +30,4 @@ class ProcessRequest(BaseModel):
     decision: str
     context: str
     responsible: Optional[str] = None
+    generated_doc: Optional[dict] = None # {subject: str, body: str}

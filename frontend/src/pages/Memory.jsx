@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/client';
-import { Search, Grid, Network, Filter } from 'lucide-react';
+import { Search, Grid, Network, Filter, Trash2, X } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import MemoryGraph from '../components/MemoryGraph';
 import { motion } from 'framer-motion';
@@ -10,8 +10,11 @@ import { fr } from 'date-fns/locale';
 const Memory = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('graph'); // 'list' or 'graph'
+  const [viewMode, setViewMode] = useState('list'); // Default to list for better readability of details
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ decision: '', context: '', responsible: '' });
 
   useEffect(() => {
     fetchMemory();
@@ -19,15 +22,7 @@ const Memory = () => {
 
   const fetchMemory = async () => {
     try {
-      // Fetching all items for now, ideally pagination for list, all for graph (or clustered)
-      const response = await api.get('/inbox/', { params: { status: 'archived' } }); 
-      // Note: Assuming archived items are "memory". 
-      // If there's a specific memory endpoint, use that. 
-      // Based on previous code, process_inbox_item creates MemoryTrace but we might need an endpoint to fetch MemoryTraces specifically.
-      // For MVP/Phase 1 we might have just used inbox archived. 
-      // Let's check if we have a memory endpoint. If not, we use inbox archived as a proxy or I'll need to create one.
-      // Checking inbox.py... it has get_inbox_items. 
-      // I'll stick with inbox archived for now as "Memory" representation.
+      const response = await api.get('/memory/'); 
       setItems(response.data);
     } catch (error) {
       console.error('Error fetching memory:', error);
@@ -36,9 +31,43 @@ const Memory = () => {
     }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (confirm('Oublier ce souvenir ? Cette action est irréversible.')) {
+      try {
+        await api.delete(`/memory/${id}`);
+        fetchMemory();
+      } catch (error) {
+        console.error('Error deleting memory:', error);
+      }
+    }
+  };
+
+  const openEditModal = (item) => {
+    setSelectedItem(item);
+    setEditForm({ 
+      decision: item.decision, 
+      context: item.context, 
+      responsible: item.responsible 
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+    try {
+      await api.put(`/memory/${selectedItem.id}`, editForm);
+      setIsEditModalOpen(false);
+      fetchMemory();
+    } catch (error) {
+      console.error('Error updating memory:', error);
+    }
+  };
+
   const filteredItems = items.filter(item => 
-    item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.action && item.action.toLowerCase().includes(searchTerm.toLowerCase()))
+    (item.decision && item.decision.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.context && item.context.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -93,7 +122,7 @@ const Memory = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   style={{ width: '100%', height: '100%' }}
                 >
-                  <MemoryGraph data={filteredItems} />
+                  <MemoryGraph data={filteredItems} onNodeClick={openEditModal} />
                 </motion.div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', height: '100%', paddingRight: '0.5rem' }}>
@@ -103,25 +132,118 @@ const Memory = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="glass-panel"
-                      style={{ padding: '1.5rem' }}
+                      style={{ padding: '1.5rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onClick={() => openEditModal(item)}
+                      whileHover={{ scale: 1.01, borderColor: 'var(--neon-blue)' }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span className="badge badge-info">{item.type?.toUpperCase() || 'INFO'}</span>
-                        <span className="text-xs text-muted">{format(new Date(item.created_at), 'dd MMM yyyy', { locale: fr })}</span>
-                      </div>
-                      <h4 style={{ marginBottom: '0.5rem' }}>{item.content}</h4>
-                      {item.action && (
-                        <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', borderLeft: '2px solid var(--neon-purple)' }}>
-                          <p className="text-sm" style={{ margin: 0 }}><strong style={{ color: '#a78bfa' }}>Action :</strong> {item.action}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <span className="badge badge-primary">ACTION</span>
+                            <span className="text-xs text-muted">{format(new Date(item.date), 'dd MMM yyyy HH:mm', { locale: fr })}</span>
+                            {item.responsible && <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>{item.responsible}</span>}
+                          </div>
+                          <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>{item.decision}</h3>
+                          <p className="text-muted" style={{ fontSize: '0.9rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {item.context}
+                          </p>
                         </div>
-                      )}
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'transparent' }}
+                            onClick={(e) => handleDelete(e, item.id)}
+                            title="Supprimer"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
+                  {filteredItems.length === 0 && <p className="text-muted text-center">Aucune trace mémoire trouvée.</p>}
                 </div>
               )}
             </>
           )}
         </div>
+
+        {/* Edit Modal */}
+        {isEditModalOpen && selectedItem && (
+          <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setIsEditModalOpen(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="modal-content"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
+                <h3>Détails du Souvenir</h3>
+                <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+              <form onSubmit={handleUpdate}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Décision / Action</label>
+                  <input 
+                    type="text"
+                    className="input" 
+                    value={editForm.decision} 
+                    onChange={(e) => setEditForm({...editForm, decision: e.target.value})}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Contexte</label>
+                  <textarea 
+                    className="input" 
+                    rows="3"
+                    value={editForm.context} 
+                    onChange={(e) => setEditForm({...editForm, context: e.target.value})}
+                  />
+                </div>
+                
+                {selectedItem.document_content && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Document Généré</label>
+                    {(() => {
+                      try {
+                        const doc = JSON.parse(selectedItem.document_content);
+                        return (
+                          <div style={{ background: '#fff', color: '#1e293b', padding: '2.5rem', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', fontFamily: 'Georgia, serif', position: 'relative' }}>
+                            <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b' }}>Objet</div>
+                              <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{doc.subject}</div>
+                            </div>
+                            <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '1rem' }}>
+                              {doc.body}
+                            </div>
+                            <div style={{ marginTop: '3rem', textAlign: 'right', fontStyle: 'italic', color: '#64748b' }}>
+                              Signature
+                            </div>
+                          </div>
+                        );
+                      } catch (e) {
+                        return <p className="text-error">Erreur de chargement du document.</p>;
+                      }
+                    })()}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.5rem' }}>Responsable</label>
+                  <input 
+                    type="text"
+                    className="input" 
+                    value={editForm.responsible} 
+                    onChange={(e) => setEditForm({...editForm, responsible: e.target.value})}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button type="button" className="btn" onClick={() => setIsEditModalOpen(false)}>Fermer</button>
+                  <button type="submit" className="btn btn-primary">Enregistrer</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </div>
     </PageTransition>
   );

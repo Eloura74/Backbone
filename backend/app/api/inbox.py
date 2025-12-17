@@ -49,6 +49,12 @@ def update_inbox_item(item_id: int, item: InboxItemUpdate, db: Session = Depends
     db.refresh(db_item)
     return db_item
 
+@router.delete("/{item_id}")
+def delete_inbox_item(item_id: int, db: Session = Depends(get_db)):
+    db_item = db.query(InboxItem).filter(InboxItem.id == item_id).first()
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Inbox item not found")
+    
     db.delete(db_item)
     db.commit()
     return {"ok": True}
@@ -58,6 +64,7 @@ from pydantic import BaseModel
 
 class GenerateRequest(BaseModel):
     template_type: str
+    user_input: Optional[str] = None
 
 @router.post("/{item_id}/generate")
 def generate_inbox_document(
@@ -70,7 +77,7 @@ def generate_inbox_document(
         raise HTTPException(status_code=404, detail="Item not found")
     
     # Use item content as context
-    document = generate_document(request.template_type, item.content)
+    document = generate_document(request.template_type, item.content, request.user_input)
     return document
 
 @router.post("/{item_id}/process")
@@ -85,11 +92,15 @@ def process_inbox_item(
         raise HTTPException(status_code=404, detail="Inbox item not found")
     
     # 2. Create a Memory Trace
+    import json
+    doc_content_json = json.dumps(request.generated_doc) if request.generated_doc else None
+    
     memory_trace = MemoryTrace(
         context=f"[{db_item.type}] {db_item.content} | {request.context}",
         decision=request.decision,
         state="processed",
-        responsible=request.responsible or "Assistant"
+        responsible=request.responsible or "Assistant",
+        document_content=doc_content_json
     )
     db.add(memory_trace)
     
@@ -97,4 +108,48 @@ def process_inbox_item(
     db_item.status = InboxStatus.ARCHIVED
     
     db.commit()
+    db.commit()
     return {"ok": True}
+
+from fastapi import UploadFile, File
+import shutil
+import os
+from app.services.parser import extract_text_from_file
+
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/upload", response_model=InboxItemSchema)
+def upload_inbox_file(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db)
+):
+    # 1. Save file locally
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # 2. Extract Text
+    extracted_text = extract_text_from_file(file_path, file.filename)
+    
+    # 3. Auto-Categorize (Simple Logic for now)
+    detected_type = "info"
+    lower_text = extracted_text.lower()
+    if "facture" in lower_text or "invoice" in lower_text or "montant" in lower_text:
+        detected_type = "facturation"
+    elif "contrat" in lower_text or "avenant" in lower_text:
+        detected_type = "rh"
+    elif "bail" in lower_text or "loyer" in lower_text:
+        detected_type = "logement"
+    
+    # 4. Create Inbox Item
+    db_item = InboxItem(
+        content=f"📄 {file.filename}\n\n{extracted_text[:500]}...", # Preview
+        source="document",
+        type=detected_type
+    )
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    
+    return db_item

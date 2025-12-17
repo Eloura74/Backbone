@@ -10,4 +10,5 @@ class MemoryTrace(Base):
     decision = Column(Text, nullable=False)
     state = Column(String, nullable=True)
     responsible = Column(String, nullable=True)
+    document_content = Column(Text, nullable=True) # JSON string for generated document
     date = Column(DateTime(timezone=True), server_default=func.now())

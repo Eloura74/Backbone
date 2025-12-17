@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Clock, AlertCircle, FileText, Phone, Mail, MessageSquare, Plus, X, ArrowRight } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, FileText, Phone, Mail, MessageSquare, Plus, X, ArrowRight, Trash2, Edit2, Maximize2, Minimize2 } from 'lucide-react';
 import api from '../api/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -20,6 +20,9 @@ const Inbox = () => {
   const [newItem, setNewItem] = useState({ source: 'note', type: 'info', content: '' });
   const [processData, setProcessData] = useState({ decision: '', context: '', responsible: '' });
   const [generatedDoc, setGeneratedDoc] = useState(null);
+  const [docVariables, setDocVariables] = useState({});
+  const [denseMode, setDenseMode] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -57,9 +60,14 @@ const Inbox = () => {
 
   const handleGenerate = async (templateType) => {
     if (!selectedItem) return;
+    const userInput = document.getElementById('generator-input')?.value || '';
     try {
-      const response = await api.post(`/inbox/${selectedItem.id}/generate`, { template_type: templateType });
+      const response = await api.post(`/inbox/${selectedItem.id}/generate`, { 
+        template_type: templateType,
+        user_input: userInput
+      });
       setGeneratedDoc(response.data);
+      setDocVariables({}); // Reset variables on new generation
     } catch (error) {
       console.error('Error generating document:', error);
     }
@@ -70,7 +78,15 @@ const Inbox = () => {
     if (!selectedItem) return;
 
     try {
-      await api.post(`/inbox/${selectedItem.id}/process`, processData);
+      const finalDoc = generatedDoc ? {
+        subject: generatedDoc.subject.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match),
+        body: generatedDoc.body.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match)
+      } : null;
+
+      await api.post(`/inbox/${selectedItem.id}/process`, {
+        ...processData,
+        generated_doc: finalDoc
+      });
       setIsProcessModalOpen(false);
       fetchItems();
     } catch (error) {
@@ -110,6 +126,28 @@ const Inbox = () => {
     show: { opacity: 1, y: 0 }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (confirm('Supprimer cet élément ?')) {
+      try {
+        await api.delete(`/inbox/${id}`);
+        fetchItems();
+      } catch (error) {
+        console.error('Error deleting item:', error);
+      }
+    }
+  };
+
+  const handleUpdateItem = async (id, newContent) => {
+    try {
+      await api.put(`/inbox/${id}`, { content: newContent });
+      setEditingItem(null);
+      fetchItems();
+    } catch (error) {
+      console.error('Error updating item:', error);
+    }
+  };
+
   return (
     <PageTransition>
       <div className="container">
@@ -118,6 +156,15 @@ const Inbox = () => {
             <h1>Inbox Unifiée</h1>
             <p className="text-muted">Centralisation des flux entrants</p>
           </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+           <button 
+            className="btn" 
+            onClick={() => setDenseMode(!denseMode)}
+            style={{ padding: '0.5rem', background: 'transparent', border: '1px solid var(--border-glass)' }}
+            title={denseMode ? "Mode Normal" : "Mode Dense"}
+          >
+            {denseMode ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
+          </button>
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -127,6 +174,7 @@ const Inbox = () => {
             <Plus size={18} style={{ marginRight: '0.5rem' }} />
             Nouvelle Entrée
           </motion.button>
+          </div>
         </div>
 
         {loading ? (
@@ -138,60 +186,130 @@ const Inbox = () => {
             animate="show"
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
           >
+            {/* DRAG & DROP ZONE */}
+            <div 
+              style={{ 
+                border: '2px dashed var(--border-glass)', 
+                borderRadius: 'var(--radius-lg)', 
+                padding: '2rem', 
+                textAlign: 'center',
+                background: 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--neon-blue)'; }}
+              onDragLeave={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--border-glass)'; }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = 'var(--border-glass)';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                  const formData = new FormData();
+                  formData.append('file', files[0]);
+                  try {
+                    await api.post('/inbox/upload', formData, {
+                      headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    fetchItems();
+                  } catch (error) {
+                    console.error('Upload failed:', error);
+                  }
+                }
+              }}
+            >
+              <FileText size={32} style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Glissez vos documents ici (PDF, Excel, Word)</p>
+            </div>
 
 
             {items.map((item) => (
-              <Tilt 
-                key={item.id} 
-                tiltMaxAngleX={2} 
-                tiltMaxAngleY={2} 
-                perspective={1000} 
-                scale={1.02}
-                transitionSpeed={1500}
-                className="glass-panel"
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <motion.div 
-                  variants={itemVariants}
-                  style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1.5rem', height: '100%' }}
-                >
-                  <div style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.05)', transform: 'translateZ(20px)' }}>
-                    {getIcon(item.source)}
-                  </div>
-                  
-                  <div style={{ flex: 1, transform: 'translateZ(10px)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                      {getStatusBadge(item.type)}
-                      <span className="text-xs text-muted">
-                        {format(new Date(item.created_at), 'dd MMM HH:mm', { locale: fr })}
-                      </span>
-                      {/* Neural Insight Badge */}
-                      {['urgence', 'facturation'].includes(item.type) && (
-                        <motion.div 
-                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(14, 165, 233, 0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(14, 165, 233, 0.2)' }}
-                        >
-                          <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 'bold' }}>CORTEX: {item.type === 'urgence' ? 'PRIORITÉ HAUTE' : 'ANALYSE FINANCIÈRE'}</span>
-                        </motion.div>
+              <motion.div key={item.id} variants={itemVariants}>
+                  <div 
+                    className="card" 
+                    style={{ 
+                      cursor: 'pointer',
+                      borderLeft: `4px solid var(--neon-${['urgence', 'facturation'].includes(item.type) ? 'red' : 'blue'})`,
+                      padding: denseMode ? '1rem' : '1.5rem',
+                      display: 'flex',
+                      alignItems: denseMode ? 'center' : 'flex-start',
+                      gap: '1rem',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--border-glass)',
+                      borderRadius: 'var(--radius-lg)'
+                    }}
+                    onClick={() => openProcessModal(item)}
+                  >
+                    <div style={{ fontSize: denseMode ? '1.5rem' : '2rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}>
+                      {getIcon(item.source)}
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                        {getStatusBadge(item.type)}
+                        <span className="text-xs text-muted">
+                          {format(new Date(item.created_at), 'dd MMM HH:mm', { locale: fr })}
+                        </span>
+                        {item.source === 'document' && <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>DOC</span>}
+                      </div>
+                      
+                      {editingItem === item.id ? (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <textarea 
+                            className="input" 
+                            defaultValue={item.content} 
+                            autoFocus
+                            onBlur={(e) => handleUpdateItem(item.id, e.target.value)}
+                            onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) handleUpdateItem(item.id, e.target.value) }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      ) : (
+                        <h3 style={{ 
+                          fontSize: denseMode ? '1rem' : '1.25rem', 
+                          marginBottom: denseMode ? 0 : '0.5rem',
+                          whiteSpace: denseMode ? 'nowrap' : 'normal',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {item.content.split('\n')[0]}
+                        </h3>
+                      )}
+                      
+                      {!denseMode && !editingItem && (
+                        <p className="text-muted" style={{ fontSize: '0.9rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {item.content.split('\n').slice(1).join(' ')}
+                        </p>
                       )}
                     </div>
-                    <div style={{ fontWeight: 500, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>{item.content}</div>
-                  </div>
 
-                  <div style={{ transform: 'translateZ(20px)' }}>
-                    <motion.button 
-                      whileHover={{ scale: 1.1, color: '#22c55e' }}
-                      whileTap={{ scale: 0.9 }}
-                      className="btn" 
-                      onClick={(e) => { e.stopPropagation(); openProcessModal(item); }} 
-                      title="Traiter"
-                      style={{ padding: '0.75rem' }}
-                    >
-                      <CheckCircle size={20} />
-                    </motion.button>
+                    <div style={{ display: 'flex', flexDirection: denseMode ? 'row' : 'column', gap: '0.5rem' }}>
+                       <button 
+                        className="btn" 
+                        style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)' }}
+                        onClick={(e) => { e.stopPropagation(); setEditingItem(item.id); }}
+                        title="Modifier"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'transparent' }}
+                        onClick={(e) => handleDelete(e, item.id)}
+                        title="Supprimer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderColor: 'transparent' }}
+                        onClick={(e) => { e.stopPropagation(); openProcessModal(item); }}
+                        title="Traiter"
+                      >
+                        <CheckCircle size={16} />
+                      </button>
+                    </div>
                   </div>
-                </motion.div>
-              </Tilt>
+              </motion.div>
             ))}
             
             {items.length === 0 && (
@@ -283,13 +401,27 @@ const Inbox = () => {
                   <FileText size={16} /> Générateur de Documents
                 </h4>
                 
+                <div style={{ marginBottom: '1rem' }}>
+                  <input 
+                    type="text" 
+                    className="input" 
+                    placeholder="Instructions optionnelles (ex: 'Ajouter que je suis absent lundi', 'Ton plus formel')..." 
+                    style={{ fontSize: '0.9rem', padding: '0.5rem 1rem', background: 'rgba(0,0,0,0.2)' }}
+                    id="generator-input"
+                  />
+                </div>
+
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   {/* DYNAMIC ACTIONS BASED ON TYPE */}
                   {selectedItem.type === 'facturation' && (
                     <>
                       <button type="button" className="btn" onClick={() => handleGenerate('facture_paiement')} style={{ fontSize: '0.8rem' }}>Preuve Virement</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance')} style={{ fontSize: '0.8rem' }}>Relance Impayé</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_1')} style={{ fontSize: '0.8rem' }}>Relance (Douce)</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_relance_2')} style={{ fontSize: '0.8rem' }}>Relance (Ferme)</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_mise_demeure')} style={{ fontSize: '0.8rem', color: '#f87171', borderColor: '#f87171' }}>Mise en Demeure</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('facture_contestation')} style={{ fontSize: '0.8rem' }}>Contester</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('facture_devis')} style={{ fontSize: '0.8rem' }}>Devis</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('finance_rib')} style={{ fontSize: '0.8rem' }}>Envoyer RIB</button>
                     </>
                   )}
 
@@ -297,7 +429,10 @@ const Inbox = () => {
                     <>
                       <button type="button" className="btn" onClick={() => handleGenerate('rh_convocation')} style={{ fontSize: '0.8rem' }}>Convocation</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('rh_offre')} style={{ fontSize: '0.8rem' }}>Offre Emploi</button>
-                      <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Service</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_promesse')} style={{ fontSize: '0.8rem' }}>Promesse Embauche</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_conges_validation')} style={{ fontSize: '0.8rem' }}>Valider Congés</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_avertissement')} style={{ fontSize: '0.8rem', color: '#fbbf24', borderColor: '#fbbf24' }}>Avertissement</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('rh_certificat')} style={{ fontSize: '0.8rem' }}>Certificat Travail</button>
                     </>
                   )}
 
@@ -305,6 +440,8 @@ const Inbox = () => {
                     <>
                       <button type="button" className="btn" onClick={() => handleGenerate('logement_preavis')} style={{ fontSize: '0.8rem' }}>Préavis Départ</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('logement_sinistre')} style={{ fontSize: '0.8rem' }}>Déclarer Sinistre</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('logement_quittance')} style={{ fontSize: '0.8rem' }}>Quittance Loyer</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('logement_travaux')} style={{ fontSize: '0.8rem' }}>Demande Travaux</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>RDV État des lieux</button>
                     </>
                   )}
@@ -313,6 +450,8 @@ const Inbox = () => {
                     <>
                       <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Compte-Rendu</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('direction_note')} style={{ fontSize: '0.8rem' }}>Note Interne</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('direction_odj')} style={{ fontSize: '0.8rem' }}>Ordre du Jour</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('admin_procuration')} style={{ fontSize: '0.8rem' }}>Procuration</button>
                     </>
                   )}
 
@@ -327,6 +466,7 @@ const Inbox = () => {
                     <>
                       <button type="button" className="btn" onClick={() => handleGenerate('email_rdv')} style={{ fontSize: '0.8rem' }}>Confirmer RDV</button>
                       <button type="button" className="btn" onClick={() => handleGenerate('direction_cr')} style={{ fontSize: '0.8rem' }}>Synthèse</button>
+                      <button type="button" className="btn" onClick={() => handleGenerate('admin_resiliation')} style={{ fontSize: '0.8rem' }}>Résiliation Contrat</button>
                     </>
                   )}
                 </div>
@@ -335,33 +475,85 @@ const Inbox = () => {
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }} 
                     animate={{ opacity: 1, height: 'auto' }}
-                    style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-sm)' }}
+                    style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.05)' }}
                   >
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <span className="text-xs text-muted">OBJET:</span> <span style={{ fontWeight: 'bold' }}>{generatedDoc.subject}</span>
+                    {/* SMART VARIABLES INPUTS */}
+                    {(() => {
+                      const placeholders = [...new Set((generatedDoc.body + generatedDoc.subject).match(/\[(.*?)\]/g) || [])];
+                      if (placeholders.length > 0) {
+                        return (
+                          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(14, 165, 233, 0.1)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--neon-blue)' }}>
+                            <h5 style={{ margin: '0 0 1rem 0', color: '#38bdf8', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <Edit2 size={14} /> Variables à compléter
+                            </h5>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                              {placeholders.map(placeholder => (
+                                <div key={placeholder}>
+                                  <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>{placeholder.replace(/[\[\]]/g, '')}</label>
+                                  <input 
+                                    type="text" 
+                                    className="input" 
+                                    style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                    placeholder="..."
+                                    value={docVariables[placeholder] || ''}
+                                    onChange={(e) => setDocVariables({...docVariables, [placeholder]: e.target.value})}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* DOCUMENT PREVIEW */}
+                    <div style={{ background: '#fff', color: '#1e293b', padding: '2.5rem', borderRadius: '4px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', fontFamily: 'Georgia, serif', marginBottom: '1.5rem', position: 'relative' }}>
+                      <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b' }}>Objet</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                          {generatedDoc.subject.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match)}
+                        </div>
+                      </div>
+                      
+                      <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '1rem' }}>
+                        {generatedDoc.body.replace(/\[(.*?)\]/g, (match) => {
+                          const val = docVariables[match];
+                          return val ? val : match;
+                        })}
+                      </div>
+
+                      {/* Signature Placeholder */}
+                      <div style={{ marginTop: '3rem', textAlign: 'right', fontStyle: 'italic', color: '#64748b' }}>
+                        Signature
+                      </div>
                     </div>
-                    <textarea 
-                      className="input" 
-                      rows="6" 
-                      value={generatedDoc.body} 
-                      readOnly 
-                      style={{ fontSize: '0.9rem', fontFamily: 'monospace', marginBottom: '1rem' }}
-                    />
+
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button type="button" className="btn" onClick={() => navigator.clipboard.writeText(`${generatedDoc.subject}\n\n${generatedDoc.body}`)} title="Copier">
+                      <button type="button" className="btn" onClick={() => {
+                        const finalSubject = generatedDoc.subject.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
+                        const finalBody = generatedDoc.body.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
+                        navigator.clipboard.writeText(`${finalSubject}\n\n${finalBody}`);
+                      }} title="Copier">
                         Copier
                       </button>
                       <button type="button" className="btn" onClick={() => {
+                        const finalSubject = generatedDoc.subject.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
+                        const finalBody = generatedDoc.body.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
                         const element = document.createElement("a");
-                        const file = new Blob([`${generatedDoc.subject}\n\n${generatedDoc.body}`], {type: 'text/plain'});
+                        const file = new Blob([`${finalSubject}\n\n${finalBody}`], {type: 'text/plain'});
                         element.href = URL.createObjectURL(file);
-                        element.download = "document.txt";
+                        element.download = `document_${format(new Date(), 'yyyyMMdd')}.txt`;
                         document.body.appendChild(element);
                         element.click();
                       }} title="Télécharger">
                         Télécharger
                       </button>
-                      <button type="button" className="btn btn-primary" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(generatedDoc.subject)}&body=${encodeURIComponent(generatedDoc.body)}`)} title="Envoyer par Email">
+                      <button type="button" className="btn btn-primary" onClick={() => {
+                        const finalSubject = generatedDoc.subject.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
+                        const finalBody = generatedDoc.body.replace(/\[(.*?)\]/g, (match) => docVariables[match] || match);
+                        window.open(`mailto:?subject=${encodeURIComponent(finalSubject)}&body=${encodeURIComponent(finalBody)}`);
+                      }} title="Envoyer par Email">
                         <Mail size={16} style={{ marginRight: '0.5rem' }} /> Envoyer
                       </button>
                     </div>
